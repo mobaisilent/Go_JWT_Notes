@@ -227,3 +227,4 @@ Parsed JWT:  &{user {my-project  [] 2024-07-18 14:17:09 +0800 CST <nil> <nil> }}
 ![image-20240717143324623](./images/image-20240717143324623.png)
 
 设置好Bearer Token直接填入token然后就可以直接获取到之前的登录信息了
+
