@@ -75,7 +75,7 @@ func ValidateRegisteredClaims(tokenString string) bool {
 	})  // 要解析的token和回调函数
 	//fmt.Println(string(mySigningKey))  
     fmt.Println(token) 
-    // 查看全解析的token的姐u共
+    // 查看全解析的token的姐u共	
 	if err != nil { // 解析token失败
 		return false
 	}
@@ -110,3 +110,120 @@ func main() {
 >在这个例子中，`tokenString` 是要解析的 token 字符串，`mySigningKey` 是用于解析 token 的密钥。
 >
 >`jwt.Parse` 函数会返回两个值：一个是解析后的 token 对象，另一个是一个错误对象。如果解析过程中发生错误，错误对象会包含错误信息，否则它将是 `nil`。
+
+### 自定义Claims
+
+>我们需要定制自己的需求来决定JWT中保存哪些数据，比如我们规定在JWT中要存储`username`信息，那么我们就定义一个`CustomClaims`结构体如下：
+
+示例代码：
+```go
+package main
+
+import (
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+// CustomClaims 自定义声明类型 并内嵌jwt.RegisteredClaims
+type CustomClaims struct {
+	Username string `json:"username"`
+	jwt.RegisteredClaims
+}
+
+// CustomSecret 用于加盐的字符串
+var CustomSecret = []byte("helloworld")
+
+// TokenExpireDuration JWT的过期时间
+const TokenExpireDuration = time.Hour * 24
+
+// GenToken 生成JWT
+func GenToken(username string) (string, error) {
+	claims := CustomClaims{
+		username,
+		jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExpireDuration)),
+			Issuer:    "mobai",
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(CustomSecret)
+}
+
+// ParseToken 解析JWT
+func ParseToken(tokenString string) (*CustomClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return CustomSecret, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
+		return claims, nil
+	}
+	return nil, errors.New("invalid token")
+}
+
+func main() {
+	// 创建一个新的token
+	tokenString, _ := GenToken("user")
+	fmt.Println("Generated JWT: ", tokenString)
+
+	// 验证并解析这个token
+	claims, _ := ParseToken(tokenString)
+	fmt.Println("Parsed JWT: ", claims)
+}
+
+```
+
+> 自定义claims -> 生成JWT -> 解析JWT
+
+输出结果如下：
+
+```go
+PS C:\Users\27892\Desktop\Golang\Deep_Learn_Pacages\JWT> go run test.go
+Generated JWT:  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InVzZXIiLCJpc3MiOiJteS1wcm9qZWN0IiwiZXhwIjoxNzIxMjgzNDI5fQ.fDwLjFIPF2RknyoUFXCDqc7XXbDhCsLd-xLMoMK11W8
+Parsed JWT:  &{user {my-project  [] 2024-07-18 14:17:09 +0800 CST <nil> <nil> }}
+```
+
+## 在gin框架中使用JWT（核心）
+
+示例代码：
+```go
+
+```
+
+使用方式：
+
+#### POST
+
+> 传递POST的JSON数据给后端去生成对应的token
+
+![image-20240717143221348](./images/image-20240717143221348.png)
+
+发送的结构体：
+```go
+{
+    "username": "q1mi",
+    "password": "q1mi123"
+}
+```
+
+接收的结果：
+```go
+{
+    "code": 2000,
+    "data": {
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InExbWkiLCJpc3MiOiJtb2JhaSIsImV4cCI6MTcyMTI4NDI0OH0.YQqM_xapuymKeTMEXfGJIw7fEfQcl8t_MHDhqYtkU8Y"
+    },
+    "msg": "success"
+}
+```
+
+#### GET
+
+![image-20240717143324623](./images/image-20240717143324623.png)
+
+设置好Bearer Token直接填入token然后就可以直接获取到之前的登录信息了
